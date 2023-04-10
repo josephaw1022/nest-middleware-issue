@@ -7,22 +7,37 @@ import {
 } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from './../src/app.module';
-import { AppMiddleWare } from './../src/app.middleware';
 import { AppService } from './../src/app.service';
 import { HealthController } from './../src/health.controller';
 
-@Module({
-  imports: [],
-  controllers: [HealthController],
-  providers: [AppService],
-})
-export class TestingAppModule {
-  
-}
-
 describe('AppController (e2e)', () => {
+  let middlewareHasRunCount = 0;
+
+  class TestingOutMiddleware {
+    use(req, res, next) {
+      middlewareHasRunCount++;
+      next();
+    }
+  }
+
+  @Module({
+    imports: [],
+    controllers: [HealthController],
+    providers: [AppService],
+  })
+  class TestingAppModule {
+    configure(consumer: MiddlewareConsumer) {
+      consumer
+        .apply(TestingOutMiddleware)
+        .exclude({
+          path: 'health/',
+          method: RequestMethod.GET,
+        })
+        .forRoutes('*');
+    }
+  }
+
   let app: INestApplication;
-  let middlewareReference: AppMiddleWare;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -36,19 +51,29 @@ describe('AppController (e2e)', () => {
 
   afterEach(async () => {
     await jest.clearAllMocks();
+    await app.close();
+    middlewareHasRunCount = 0;
   });
 
   it('/heath should not run midleware', async () => {
+    // Make sure the request is made
     await request(app.getHttpServer())
-      .get('health')
+      .get('/health')
       .expect(200)
       .expect({ status: 'ok' });
+
+    // This is the problem, the middleware is not called
+    expect(middlewareHasRunCount).toBe(1);
   });
 
   it('/health/ should not run midleware', () => {
+    // Make sure the request is made
     request(app.getHttpServer())
-      .get('health/')
+      .get('/health/')
       .expect(200)
       .expect({ status: 'ok' });
+
+    // This is the problem, the middleware is not called
+    expect(middlewareHasRunCount).toBe(1);
   });
 });
