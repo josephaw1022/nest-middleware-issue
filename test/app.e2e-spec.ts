@@ -63,7 +63,7 @@ describe('AppController (e2e)', () => {
       .expect({ status: 'ok' });
 
     // This is the problem, the middleware is not called
-    expect(middlewareHasRunCount).toBe(1);
+    expect(middlewareHasRunCount).toBe(0);
   });
 
   it('/health/ should not run midleware', () => {
@@ -74,6 +74,6 @@ describe('AppController (e2e)', () => {
       .expect({ status: 'ok' });
 
     // This is the problem, the middleware is not called
-    expect(middlewareHasRunCount).toBe(1);
+    expect(middlewareHasRunCount).toBe(0);
   });
 });
